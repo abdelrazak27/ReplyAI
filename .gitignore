@@ -1,0 +1,11 @@
+.build*/
+engine-*/
+*.exe
+*.zip
+*.protected
+workspace*.json
+__pycache__/
+*.pyc
+*.replyai.json
+*.parolerp.json
+!src/Icon.ico

@@ -1,0 +1,13 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+namespace ParoleRP {
+ public static class ApiErrors {
+  public static string Describe(int code,string response,string key,string model){string status="",detail="";try{if(response!=null&&response.Length<=65536){var root=DataFiles.Json().Deserialize<Dictionary<string,object>>(response);object value;if(root!=null&&root.TryGetValue("error",out value)){var error=value as Dictionary<string,object>;if(error!=null){if(error.TryGetValue("status",out value))status=Convert.ToString(value);if(error.TryGetValue("message",out value))detail=Convert.ToString(value);}}}}catch{}
+   if(!Regex.IsMatch(status,@"^[A-Z_]{1,80}$"))status="";detail=Sanitize(detail,key);if(detail.Length>600)detail=detail.Substring(0,600)+"…";
+   string title,advice;if(code==500){title="Erreur interne renvoyée par Groq";advice="Réessayez dans quelques secondes. Si l’erreur persiste, vérifiez l’état du service ou essayez le même modèle dans la console Groq. Ce code seul ne permet pas d’identifier la cause exacte.";}else if(code==502||code==503||code==504){title="Service Groq temporairement indisponible";advice="Attendez quelques instants puis réessayez.";}else if(code==429){title="Quota ou capacité momentanément atteints";advice="Attendez avant de réessayer et consultez les quotas de votre organisation dans la console Groq.";}else if(code==401||code==403){title="Clé refusée ou modèle non accessible";advice="Vérifiez la clé, les autorisations et votre organisation dans la console Groq.";}else if(code==404){title="Modèle introuvable";advice="Vérifiez l’identifiant du modèle dans Connexion & API.";}else if(code==400){title="Demande refusée par Groq";advice="Le détail ci-dessous peut indiquer un paramètre invalide ou une limite du modèle.";}else{title="Demande API non aboutie";advice="Consultez le détail Groq puis réessayez après avoir vérifié la connexion et le modèle.";}
+   return title+" (HTTP "+code+").\nModèle : "+model+"\n"+(detail.Length==0?"Groq n’a pas fourni de détail exploitable.":"Détail Groq : "+(status.Length==0?"":status+" — ")+detail)+"\n"+advice+"\nAucun texte n’a été remplacé. Les secours configurés ne sont essayés que sur une erreur de quota.";
+  }
+  static string Sanitize(string value,string key){value=value??"";if(!String.IsNullOrEmpty(key)){value=value.Replace(key,"[clé masquée]").Replace(Uri.EscapeDataString(key),"[clé masquée]");}value=Regex.Replace(value,@"gsk_[0-9A-Za-z_-]{20,}","[clé masquée]");value=Regex.Replace(value,@"(?i)([?&](?:key|api_key|access_token)=)[^\s&\""']+","$1[masqué]");value=Regex.Replace(value,@"[\x00-\x1F\x7F]+"," ");return value.Trim();}
+ }
+}

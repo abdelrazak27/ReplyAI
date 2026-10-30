@@ -1,2 +1,29 @@
-# ReplyAI
-Application Windows de correction, reformulation et génération de textes RP, avec profils et raccourcis globaux.
+# Reply AI
+
+Correction, reformulation et génération de textes RP à partir d'une sélection, sous Windows.
+
+## Installation
+
+Télécharger [la dernière version](https://github.com/abdelrazak27/ReplyAI/releases/latest), extraire le ZIP puis lancer **ReplyAI.exe**. Quitter l'ancienne version lors de la première migration. Les prochaines mises à jour s'installent depuis **Configurations → Mises à jour**.
+
+## Utilisation
+
+Créer un personnage, ajouter ses mots et sa clé API Groq dans **Connexion & API**, puis sélectionner un texte dans l'application cible et utiliser le raccourci configuré. Aucun message n'est envoyé automatiquement dans le jeu.
+
+Les profils et dictionnaires sont importables et exportables. Les clés sont chiffrées pour le compte Windows et exclues des exports. Les textes sélectionnés et le contexte actif sont transmis à Groq lors d'une demande. Chaque utilisateur fournit sa propre clé et respecte les quotas de son organisation.
+
+## Développement
+
+Windows, .NET Framework 4.8 et Python 3.13.
+
+```powershell
+./CONSTRUIRE-MOTEUR.ps1
+./CONSTRUIRE.ps1
+./tests/VERIFIER.ps1
+./tests/VERIFIER-MAJ.ps1
+./PUBLIER.ps1
+```
+
+Le workflow GitHub Actions teste et publie un ZIP Windows lorsque VERSION contient une version encore non publiée. Mettre également les numéros d'assemblage à jour dans src/AssemblyInfo.cs.
+
+Les dépendances conservent leurs licences dans le dossier du moteur. Le code de l'application est consultable ici ; aucune licence de redistribution supplémentaire n'est accordée.
