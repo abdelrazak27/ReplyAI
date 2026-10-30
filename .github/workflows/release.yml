@@ -1,0 +1,66 @@
+name: Windows release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import initial sources
+        shell: pwsh
+        run: |
+          if(Test-Path SOURCE.zip){
+            Expand-Archive -LiteralPath SOURCE.zip -DestinationPath . -Force
+            Remove-Item -LiteralPath SOURCE.zip
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "Import Reply AI application sources"
+            if($LASTEXITCODE -ne 0){throw 'Source commit failed'}
+            git push
+            if($LASTEXITCODE -ne 0){throw 'Source push failed'}
+          }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Determine version
+        id: version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version=(Get-Content VERSION -Raw).Trim()
+          if($version -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid version'}
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+          gh release view "v$version" --repo $env:GITHUB_REPOSITORY 2>$null
+          if($LASTEXITCODE -eq 0){'exists=true' >> $env:GITHUB_OUTPUT}else{'exists=false' >> $env:GITHUB_OUTPUT}
+          exit 0
+      - name: Check application and updater
+        shell: pwsh
+        run: |
+          ./tests/VERIFIER.ps1
+          ./tests/VERIFIER-MAJ.ps1
+          ./tests/VERIFIER-CLAVIER.ps1
+          ./tests/VERIFIER-PRESSE-PAPIERS.ps1
+      - name: Build Python engine
+        if: steps.version.outputs.exists == 'false'
+        shell: pwsh
+        run: ./CONSTRUIRE-MOTEUR.ps1
+      - name: Package Windows application
+        if: steps.version.outputs.exists == 'false'
+        shell: pwsh
+        run: ./PUBLIER.ps1
+      - name: Publish release
+        if: steps.version.outputs.exists == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: gh release create $env:RELEASE_TAG .build/ReplyAI-win-x64.zip --title "Reply AI $env:RELEASE_TAG" --notes-file RELEASE-NOTES.md --target (git rev-parse HEAD) --repo $env:GITHUB_REPOSITORY
