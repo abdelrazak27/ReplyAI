@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import json
 import inspect
 from unittest.mock import patch, AsyncMock
@@ -426,6 +426,30 @@ class GenerationTests(unittest.TestCase):
         async def slow(*args,**kwargs):await asyncio.sleep(.08);return {'text':'/me trop tard.'}
         with patch.object(engine,'TIMEOUT_SECONDS',.03),patch.object(engine,'groq_generate',slow),self.assertRaises(TimeoutError):
             asyncio.run(engine.handle_async(request,NS(get=AsyncMock(return_value=object()))))
+
+
+class TelemetryTests(unittest.TestCase):
+    def test_usage_includes_partial_response_even_when_rejected(self):
+        report={"usageEvents":[],"routeEvents":[]};token=engine.REPORT.set(report)
+        try:
+            with self.assertRaises(ValueError):
+                run_stream([chunk("partial", "length", usage=NS(prompt_tokens=21,completion_tokens=7,prompt_tokens_details=NS(cached_tokens=5)))])
+            self.assertEqual(report['usageEvents'],[dict(model='qwen/qwen3.8-27b',inputTokens=21,outputTokens=7,cachedTokens=5)])
+        finally:engine.REPORT.reset(token)
+
+    def test_success_and_quota_report_no_credentials_or_text(self):
+        report={"usageEvents":[],"routeEvents":[]};token=engine.REPORT.set(report)
+        try:
+            connection=dict(Id='one',QuotaGroup='org',Model='qwen',Key='SECRET_KEY_DO_NOT_REPORT',Name='private name')
+            engine.record_route(connection,'quota',429,122)
+            self.assertEqual(report['routeEvents'][0]['retrySeconds'],122)
+            self.assertNotIn('SECRET',json.dumps(report));self.assertNotIn('private name',json.dumps(report))
+        finally:engine.REPORT.reset(token)
+
+    def test_new_styles_are_explicit_and_correct_french(self):
+        for style in ['Toxico','Crapule']:
+            self.assertIn(style,engine.DIALOGUE_STYLES)
+            self.assertIn('Corrige',engine.DIALOGUE_STYLES[style])
 
 
 if __name__ == "__main__":

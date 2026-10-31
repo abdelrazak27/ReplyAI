@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Runtime.InteropServices;
 namespace ParoleRP {
-public static class Native {
+public static partial class Native {
  [DllImport("user32.dll",SetLastError=true)]public static extern bool RegisterHotKey(IntPtr hwnd,int id,uint modifiers,uint key);[DllImport("user32.dll")]public static extern bool UnregisterHotKey(IntPtr hwnd,int id);[DllImport("user32.dll")]public static extern IntPtr GetForegroundWindow();[DllImport("user32.dll")]public static extern uint GetClipboardSequenceNumber();[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr window,out uint process);[DllImport("user32.dll")]static extern short GetAsyncKeyState(int key);[DllImport("user32.dll",SetLastError=true)]static extern uint SendInput(uint n,INPUT[] input,int size);
  [StructLayout(LayoutKind.Sequential)]struct INPUT{public uint type;public UNION u;}[StructLayout(LayoutKind.Explicit)]struct UNION{[FieldOffset(0)]public KEYBD ki;[FieldOffset(0)]public MOUSE mi;}[StructLayout(LayoutKind.Sequential)]struct KEYBD{public ushort vk,scan;public uint flags,time;public UIntPtr extra;}[StructLayout(LayoutKind.Sequential)]struct MOUSE{public int x,y;public uint data,flags,time;public UIntPtr extra;}
  public static bool Modifiers(){return new[]{16,17,18,91,92}.Any(k=>(GetAsyncKeyState(k)&0x8000)!=0);}

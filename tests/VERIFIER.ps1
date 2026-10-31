@@ -1,4 +1,4 @@
-param([string]$WorkingRoot=$env:TEMP)
+﻿param([string]$WorkingRoot=$env:TEMP)
 $ErrorActionPreference='Stop'
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
@@ -9,4 +9,5 @@ try {
  if($LASTEXITCODE -ne 0){throw 'Compilation des tests impossible.'}
  Push-Location $tempTests
  try { & .\Tests.exe; if($LASTEXITCODE -ne 0){throw 'Un test a échoué.'} } finally { Pop-Location }
+ & ./tests/VERIFIER-USAGE.ps1 -WorkingRoot $WorkingRoot
 } finally { Pop-Location }

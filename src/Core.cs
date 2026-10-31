@@ -26,7 +26,7 @@ namespace ParoleRP {
  public static class WritingStyles {
   public static readonly string[] GenerationFormats={"Auto","/me","/do","/ame","Entre étoiles"};
   public static readonly string[] GenerationDetails={"Bref","Équilibré","Détaillé"};
-  public static readonly string[] Dialogue={"Naturel","Soutenu","Élégant","Familier","Street discret","Street US discret","Populaire / beauf","Ancienne génération","Chaleureux","Froid / direct","Timide / hésitant","Théâtral","Personnalisé"};
+  public static readonly string[] Dialogue={"Naturel","Soutenu","Élégant","Familier","Street discret","Street US discret","Populaire / beauf","Toxico","Crapule","Ancienne génération","Chaleureux","Froid / direct","Timide / hésitant","Théâtral","Personnalisé"};
   public static readonly string[] Actions={"Simple","Concis","Descriptif","Détaillé","Littéraire","Cinématographique","Personnalisé"};
  }
  public sealed class Character {

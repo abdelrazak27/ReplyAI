@@ -16,8 +16,8 @@ namespace ParoleRP {
    var feedback=T("",12,"#D0AE78");var fields=S(T(title,24),Space(18));
    if(!primary)fields.Children.Add(Field("Nom",name));
    fields.Children.Add(Field(original==null?"Clé API":"Nouvelle clé (facultatif)",key));
-   fields.Children.Add(Field("Compte Groq",group,"Même nom pour les clés du même compte."));
-   fields.Children.Add(new Expander{Header="Modèle de correction",Foreground=B("#989892"),Margin=new Thickness(0,0,0,14),Content=new Border{Padding=new Thickness(0,10,0,0),Child=S(model,Space(10),T("Reformulation & génération : GPT-OSS 120B",11,"#989892"))}});
+   fields.Children.Add(Field("Organisation Groq",group,"Même organisation = même nom. Organisations distinctes = noms distincts."));
+   fields.Children.Add(new Expander{Header="Avancé · modèle de correction",Foreground=B("#989892"),Margin=new Thickness(0,0,0,14),Content=new Border{Padding=new Thickness(0,10,0,0),Child=S(model,Space(10),T("Cette clé donne accès aux différents modèles. Reformulation et génération utilisent automatiquement GPT-OSS 120B.",11,"#989892"))}});
    var save=Button("Enregistrer",()=>{try{
     string value=key.Password.Trim();if(value.Length==0&&original!=null)value=original.Key;
     var draft=new ApiConnection{Id=original==null?Guid.NewGuid().ToString("N"):original.Id,Name=primary?"Clé principale":name.Text.Trim(),Provider="Groq",Key=value,Model=Convert.ToString(model.SelectedValue),QuotaGroup=group.Text.Trim(),Enabled=original==null||original.Enabled};
@@ -37,7 +37,7 @@ namespace ParoleRP {
     if(store.HasKey&&store.GetKey()==draft.Key)throw new Exception("Cette clé est déjà la clé principale.");
     int index=list.FindIndex(c=>c.Id==draft.Id);if(index<0)list.Add(draft);else list[index]=draft;vault.Save(list);
    }
-   revision++;Header();
+   health.Clear();revision++;Header();
   }
  }
 }

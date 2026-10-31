@@ -1,4 +1,4 @@
-# Reply AI
+﻿# Reply AI
 
 Correction, reformulation et génération de textes RP à partir d'une sélection, sous Windows.
 
@@ -11,6 +11,14 @@ Télécharger [la dernière version](https://github.com/abdelrazak27/ReplyAI/rel
 Créer un personnage, ajouter ses mots et sa clé API Groq dans **Connexion & API**, puis sélectionner un texte dans l'application cible et utiliser le raccourci configuré. Aucun message n'est envoyé automatiquement dans le jeu.
 
 Les profils et dictionnaires sont importables et exportables. Les clés sont chiffrées pour le compte Windows et exclues des exports. Les textes sélectionnés et le contexte actif sont transmis à Groq lors d'une demande. Chaque utilisateur fournit sa propre clé et respecte les quotas de son organisation.
+
+## Nouveautés 2.2
+
+- Consommation : session, jour et mois, moyennes par fonction et jetons mesurés.
+- État des clés par modèle, organisation et délai de réessai après quota.
+- Modèles expliqués, réglage de correction dans Avancé.
+- Ctrl+Z : annulation gardée du dernier remplacement, avant retouche du champ et pendant 30 secondes.
+- Styles de dialogue Toxico et Crapule.
 
 ## Développement
 

@@ -1,4 +1,4 @@
-﻿# Reply AI — version 2.1.0
+﻿# Reply AI — version 2.2.0
 
 Correcteur de sélection pour Windows et FiveM, utilisant exclusivement Groq. Python et le SDK Groq sont inclus. Aucun autre fournisseur n’est proposé ou appelé.
 
@@ -124,3 +124,15 @@ Les scripts `tests/VERIFIER.ps1`, `tests/VERIFIER-CLAVIER.ps1` et `tests/VERIFIE
 ## Mises à jour
 
 Dans Configurations → Mises à jour, cliquez sur Vérifier puis Mettre à jour si une version est disponible. Le téléchargement est vérifié avant fermeture ; Reply AI redémarre ensuite automatiquement. Les données locales restent à leur place. La version précédente des fichiers remplacés est conservée dans le dossier updates des données locales. Une connexion Internet à GitHub est nécessaire.
+
+## Consommation et état des clés (2.2)
+
+La page Consommation affiche les demandes de la session, du jour ou du mois, les jetons annoncés par Groq et la moyenne mesurée pour chaque fonction. Les appels de préparation du contexte sont inclus. Les échecs sans mesure sont signalés. L’historique usage.json ne contient que des agrégats par jour, sur 400 jours ; aucun texte, clé ni contexte. Nouvelle session remet uniquement le compteur de session à zéro.
+
+Les clés affichent séparément leur état de correction et leur état RP (reformulation et génération). Disponible décrit le dernier appel réussi. À vérifier signifie qu’aucun appel n’a encore confirmé ce modèle dans cette exécution. Un quota est partagé entre les clés de la même organisation et du même modèle. Le délai de réessai est approximatif ; aucun quota restant n’est inventé.
+
+Le choix du modèle de correction se trouve dans Avancé. Reformulation et génération utilisent automatiquement GPT-OSS 120B avec les mêmes clés Groq.
+
+Après un remplacement, Ctrl+Z peut restaurer le texte original pendant 30 secondes, tant que vous n’avez ni retouché le champ ni changé de fenêtre. Reply AI vérifie le texte avant de le rétablir et ne transmet aucune nouvelle demande à Groq. Après saisie, déplacement du curseur ou clic, Ctrl+Z reprend son fonctionnement habituel dans l’application cible. Si Ctrl+Z est déjà votre raccourci Reply AI ou si Windows refuse son enregistrement, l’annulation reste celle de l’application cible.
+
+Les styles de dialogue Toxico et Crapule sont disponibles dans le profil du personnage. Ils conservent l’idée du message tout en changeant sa voix.

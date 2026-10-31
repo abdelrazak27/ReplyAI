@@ -1,5 +1,6 @@
-"""Private JSON-lines worker. stdout is reserved for responses, never credentials."""
+﻿"""Private JSON-lines worker. stdout is reserved for responses, never credentials."""
 import asyncio
+from contextvars import ContextVar
 import hashlib
 import difflib
 import unicodedata
@@ -103,6 +104,27 @@ def validate_request(request):
     return provider, model, key
 
 
+REPORT = ContextVar("reply_report", default=None)
+
+
+def record_route(connection, state, code=0, retry=0):
+    report = REPORT.get()
+    if report is not None:
+        report["routeEvents"].append(dict(connectionId=connection.get("Id", "primary"),
+            quotaGroup=connection.get("QuotaGroup", "principal"), model=connection.get("Model", ""),
+            state=state, code=code, retrySeconds=retry))
+
+
+def record_usage(usage, model):
+    report = REPORT.get()
+    if report is not None and usage is not None:
+        details = getattr(usage, "prompt_tokens_details", None)
+        report["usageEvents"].append(dict(model=model,
+            inputTokens=getattr(usage, "prompt_tokens", 0) or 0,
+            outputTokens=getattr(usage, "completion_tokens", 0) or 0,
+            cachedTokens=getattr(details, "cached_tokens", 0) or 0))
+
+
 async def groq_generate(client, model, system, text, tokens, temperature=0.0, reasoning_effort=None):
     kwargs = dict(model=model, messages=[{"role": "system", "content": system},
         {"role": "user", "content": text}],
@@ -132,6 +154,7 @@ async def groq_generate(client, model, system, text, tokens, temperature=0.0, re
                     output.append(choice.delta.content)
             usage = chunk.usage or (getattr(chunk.x_groq, "usage", None) if chunk.x_groq else None) or usage
     finally:
+        record_usage(usage, model)
         await stream.close()
     if finish != "stop" or not "".join(output).strip():
         raise ValueError("Réponse vide ou interrompue. Aucun texte remplacé.")
@@ -192,6 +215,8 @@ DIALOGUE_STYLES = {
     "Street discret": "Reconstruis en argot de rue français crédible et mesuré. C'est de l'oral bien écrit, jamais du SMS mal orthographié. Pas de caricature.",
     "Street US discret": "Reconstruis en français oral de rue, crédible pour un serveur RP français. Français majoritaire ; un homie ou dawg seulement si naturel, jamais systématiquement. Corrige toutes les fautes involontaires, accords, conjugaisons, accents et SMS. Garde l'oral sans ne, les contractions correctes avec apostrophes et les rires intentionnels ; pas une copie du texte fautif.",
     "Populaire / beauf": "Réécris avec franc-parler populaire, expressions terre-à-terre et tournures imagées, sans inventer d'insulte ou de cliché.",
+    "Toxico": "Réécris comme un personnage sous l'emprise de substances : parole décousue mais compréhensible, hésitations, répétitions ponctuelles et rythme irrégulier. Reste naturel, sans caricature systématique. Corrige les fautes involontaires. N'invente ni consommation, ni symptôme, ni acte absent de l'idée initiale.",
+    "Crapule": "Réécris en français oral de jeune crapule provocateur : insolent, culotté, gouailleur, petites piques et tournures de rue. Cherche la confrontation verbale sans ajouter menace, violence, insulte ciblée ou fait absent de l'idée de départ. Peu ou pas d'anglicismes. Corrige accents, accords, conjugaisons et SMS ; conserve des contractions orales correctes.",
     "Ancienne génération": "Réécris avec des tournures traditionnelles discrètes, sans inventer âge ou souvenirs.",
     "Chaleureux": "Réécris dans une voix chaleureuse et accessible, sans changer le propos ni effacer une opposition.",
     "Froid / direct": "Réécris en phrases sobres, directes et distantes, sans amplifier l'agressivité.",
@@ -424,16 +449,22 @@ async def handle_async(request, pool):
                 continue
             tried_keys.add(identity)
             attempts += 1
+            report = REPORT.get()
+            if report is not None: report["activeRoute"] = connection
             try:
                 result = await handle_one(single, pool)
             except Exception as error:
                 code = getattr(error, "status_code", None) or getattr(error, "code", 0)
                 if code != 429:
+                    record_route(connection, "error", code)
                     error.parole_provider = single["provider"]
                     raise
-                pool.quota_cooldowns[scope] = time.monotonic() + quota_wait(error)
+                wait = quota_wait(error)
+                record_route(connection, "quota", 429, wait)
+                pool.quota_cooldowns[scope] = time.monotonic() + wait
                 failed_scopes.add(scope)
                 continue
+            record_route(connection, "ready")
             result.update(milliseconds=round((time.monotonic()-started)*1000),
                           connectionName=connection.get("Name", "Connexion"), providerUsed=single["provider"],
                           modelUsed=single["model"], attempts=attempts)
@@ -469,6 +500,8 @@ async def serve():
     try:
         while line := await asyncio.to_thread(sys.stdin.readline):
             request = {}
+            report = {"usageEvents": [], "routeEvents": []}
+            report_token = REPORT.set(report)
             try:
                 if len(line) > 200000:
                     raise ValueError("Demande trop volumineuse.")
@@ -478,11 +511,26 @@ async def serve():
                 result = await handle_async(request, pool)
             except Exception as error:
                 result = safe_failure(error, request.get("key", "") if isinstance(request, dict) else "")
+                active = report.get("activeRoute")
+                if active and not any(e["connectionId"] == active.get("Id", "primary") and e["model"] == active.get("Model", "") for e in report["routeEvents"]):
+                    record_route(active, "error", result.get("code", 0))
+                if result.get("code") == 429: result["retrySeconds"] = quota_wait(error)
             if not result.get("ok") and isinstance(request, dict):
                 result["providerUsed"] = result.get("providerUsed") or request.get("provider")
                 for connection in request.get("connections", []) if isinstance(request.get("connections"), list) else []:
                     if isinstance(connection, dict) and isinstance(connection.get("Key"), str) and connection["Key"]:
                         result["message"] = result["message"].replace(connection["Key"], "[clé masquée]")
+            if isinstance(request, dict):
+                result["operation"] = request.get("op", "")
+                if request.get("op") == "test":
+                    record_route({"Id": request.get("connectionId", "primary"),
+                        "QuotaGroup": request.get("quotaGroup", "principal"), "Model": request.get("model", "")},
+                        "ready" if result.get("ok") else "quota" if result.get("code") == 429 else "error",
+                        result.get("code", 0), result.get("retrySeconds", 60) if result.get("code") == 429 else 0)
+                if not result.get("ok") and request.get("connections") and not report["routeEvents"]:
+                    record_route(request["connections"][0], "error", result.get("code", 0))
+            result.update({"usageEvents": report["usageEvents"], "routeEvents": report["routeEvents"]})
+            REPORT.reset(report_token)
             print(json.dumps(result, ensure_ascii=False), flush=True)
     finally:
         await pool.close()

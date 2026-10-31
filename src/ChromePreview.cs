@@ -17,7 +17,7 @@ namespace ParoleRP {
    ChromeScreenshot(folder,"characters-ready");
    var second=new Character{Name="Second personnage de test",Context="Contexte à conserver."};data.Characters.Add(second);Header();picker.SelectedItem=second;
    if(data.ActiveId!=second.Id||store.Load().ActiveId!=second.Id||data.Active.Context!="Contexte à conserver.")throw new Exception("Sélecteur global non fonctionnel.");
-   string[] names={"NavProfiles","NavDictionary","NavTest","NavSettings","NavBackups","NavUpdates"};
+   string[] names={"NavProfiles","NavDictionary","NavTest","NavSettings","NavBackups","NavUpdates","NavUsage"};
    for(int i=0;i<names.Length;i++){PressChrome(names[i]);if(page!=i+1)throw new Exception("Navigation décalée : "+names[i]);}
    if(w.FindName("PauseToggle")!=null||w.FindName("HeaderStatusAction")!=null)throw new Exception("Anciennes actions du header présentes.");
    var indicator=(Border)w.FindName("HeaderStatusIndicator");if(indicator.IsHitTestVisible||indicator.Focusable)throw new Exception("État encore interactif.");

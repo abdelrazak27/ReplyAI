@@ -9,3 +9,6 @@ __pycache__/
 *.replyai.json
 *.parolerp.json
 !src/Icon.ico
+
+usage*.json
+.previous-versions/
