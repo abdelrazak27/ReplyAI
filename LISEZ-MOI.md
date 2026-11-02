@@ -1,4 +1,4 @@
-﻿# Reply AI — version 2.2.0
+﻿# Reply AI — version 2.2.1
 
 Correcteur de sélection pour Windows et FiveM, utilisant exclusivement Groq. Python et le SDK Groq sont inclus. Aucun autre fournisseur n’est proposé ou appelé.
 
@@ -127,7 +127,7 @@ Dans Configurations → Mises à jour, cliquez sur Vérifier puis Mettre à jour
 
 ## Consommation et état des clés (2.2)
 
-La page Consommation affiche les demandes de la session, du jour ou du mois, les jetons annoncés par Groq et la moyenne mesurée pour chaque fonction. Les appels de préparation du contexte sont inclus. Les échecs sans mesure sont signalés. L’historique usage.json ne contient que des agrégats par jour, sur 400 jours ; aucun texte, clé ni contexte. Nouvelle session remet uniquement le compteur de session à zéro.
+La page Consommation affiche les demandes de la session, du jour ou du mois, les jetons annoncés par Groq et la moyenne mesurée pour chaque fonction. Les appels de préparation du contexte sont inclus. Les échecs sans mesure sont signalés. L’historique usage.json ne contient que des agrégats par jour, sur 400 jours ; aucun texte, clé ni contexte. La session commence à l’ouverture de Reply AI ; aucun bouton de remise à zéro n’est affiché.
 
 Les clés affichent séparément leur état de correction et leur état RP (reformulation et génération). Disponible décrit le dernier appel réussi. À vérifier signifie qu’aucun appel n’a encore confirmé ce modèle dans cette exécution. Un quota est partagé entre les clés de la même organisation et du même modèle. Le délai de réessai est approximatif ; aucun quota restant n’est inventé.
 
