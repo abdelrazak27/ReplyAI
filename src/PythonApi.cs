@@ -48,7 +48,7 @@ namespace ParoleRP {
      outcome=EngineOutcome.Success;stage=EngineStage.Complete;return result;
     }catch(EngineProviderError){throw;}
     catch(OperationCanceledException){stage=owner==null?stage:owner.Stage;outcome=disposed?EngineOutcome.Cancelled:EngineOutcome.Timeout;Retire(owner);throw new Exception(disposed?"L’application est en cours de fermeture.":"Délai de "+(timeoutMilliseconds/1000.0).ToString("0.#")+" secondes atteint. Aucun texte remplacé. Vous pouvez réessayer ; le moteur sera recréé.");}
-    catch(Exception error){stage=owner==null||stage==EngineStage.Decode?stage:owner.Stage;outcome=error is InvalidDataException?EngineOutcome.ProtocolError:EngineOutcome.TransportError;Retire(owner);if(error is FileNotFoundException)throw;throw new Exception("La liaison avec le moteur a été interrompue. Aucun texte remplacé. Réessayez pour recréer le moteur.");}
+    catch(Exception error){stage=owner==null||stage==EngineStage.Decode?stage:owner.Stage;outcome=error is InvalidDataException?EngineOutcome.ProtocolError:EngineOutcome.TransportError;Retire(owner);if(error is FileNotFoundException)throw;throw new Exception("La liaison avec le moteur a été interrompue. Aucun texte remplacé. Réessayez pour recréer le moteur.",error);}
     finally{if(acquired)gate.Release();if(!reported&&outcome!=EngineOutcome.Success)Report(new ApiReport{ok=false,operation=operation});Trace(operation,stage,outcome,timer.ElapsedMilliseconds);}
    }
   }
