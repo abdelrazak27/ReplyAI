@@ -1,6 +1,8 @@
-Reply AI 2.2.1
+Reply AI 2.2.2
 
-- Suppression du bouton « Nouvelle session » dans Consommation.
-- La session commence à l’ouverture de Reply AI. Les cumuls du jour et du mois restent conservés.
+- Correction d’un blocage possible avant le démarrage du délai de sécurité : la limite de 10 secondes couvre maintenant l’attente, le démarrage, l’envoi, la vidange et la lecture de la réponse du moteur.
+- Une liaison bloquée est abandonnée. La prochaine demande explicite démarre un moteur neuf ; le texte n’est pas renvoyé automatiquement à Groq.
+- Libération de l’état occupé dans le nettoyage du raccourci, y compris en cas d’erreur.
+- Journal technique local et borné : étapes et délais uniquement, sans message RP, contexte ni clé API.
 
-Mise à jour depuis Configurations → Mises à jour. Vos profils et clés sont conservés.
+Dans Reply AI : Configurations → Mises à jour → Vérifier → Mettre à jour lorsque vous êtes prêt à redémarrer l’application. Profils, clés et historique conservés.

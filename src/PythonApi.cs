@@ -11,13 +11,48 @@ namespace ParoleRP {
  public sealed class GroqApi : IDisposable {
   public event Action<ApiReport> Reported;
   public string Provider {get;set;}
-  readonly string executable;
+  readonly string executable;readonly int timeoutMilliseconds;
+  readonly SemaphoreSlim gate=new SemaphoreSlim(1,1);readonly object workerSync=new object();readonly CancellationTokenSource closing=new CancellationTokenSource();EngineWorker worker;volatile bool disposed;
+  public event Action<EngineTrace> Diagnostic;
   public GroqApi():this(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"engine-v1.9","parole-engine.exe")){}
-  public GroqApi(string enginePath){Provider="Groq";executable=Path.GetFullPath(enginePath);}
-  readonly SemaphoreSlim gate=new SemaphoreSlim(1,1);Process worker;bool disposed;
-  void Start(){if(worker!=null&&!worker.HasExited)return;string path=executable;if(!File.Exists(path))throw new Exception("Le moteur Python est absent. Extrayez le dossier complet de Reply AI avant de lancer l’application.");var info=new ProcessStartInfo(path){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=new UTF8Encoding(false),StandardErrorEncoding=new UTF8Encoding(false),WorkingDirectory=Path.GetDirectoryName(path)};worker=Process.Start(info);worker.ErrorDataReceived+=(s,e)=>{};worker.BeginErrorReadLine();}
-  void Stop(){try{if(worker!=null){if(!worker.HasExited)worker.Kill();worker.Dispose();}}catch{}worker=null;}
-  async Task<Dictionary<string,object>> Request(object payload,string key,string model){await gate.WaitAsync();try{if(disposed)throw new Exception("L’application est en cours de fermeture.");Start();byte[] bytes=Encoding.UTF8.GetBytes(DataFiles.Json().Serialize(payload)+"\n");await worker.StandardInput.BaseStream.WriteAsync(bytes,0,bytes.Length);await worker.StandardInput.BaseStream.FlushAsync();var response=worker.StandardOutput.ReadLineAsync();if(await Task.WhenAny(response,Task.Delay(12000))!=response){Stop();throw new Exception("Le SDK Python n’a pas répondu dans le délai prévu. Aucun texte remplacé.");}string line=await response;if(String.IsNullOrEmpty(line)||line.Length>100000){Stop();throw new Exception("Le moteur Python s’est arrêté ou a renvoyé une réponse invalide. Aucun texte remplacé.");}Dictionary<string,object> result;try{result=DataFiles.Json().Deserialize<Dictionary<string,object>>(line);}catch{Stop();throw new Exception("Réponse du moteur Python illisible. Aucun texte remplacé.");}if(result==null||!result.ContainsKey("ok"))throw new Exception("Réponse du moteur Python incomplète.");try{if(Reported!=null&&result.ContainsKey("operation"))Reported(DataFiles.Json().Deserialize<ApiReport>(DataFiles.Json().Serialize(result)));}catch{}if(!Convert.ToBoolean(result["ok"])){int code=result.ContainsKey("code")?Convert.ToInt32(result["code"]):0;string message=result.ContainsKey("message")?Convert.ToString(result["message"]):"Erreur du SDK Python.";if(code==429)throw new Exception(message+"\nAucun texte remplacé.");if(code>0&&((result.ContainsKey("providerUsed")?Convert.ToString(result["providerUsed"]):Provider)=="Groq"))throw new Exception("Erreur Groq (HTTP "+code+").\n"+message.Replace(key,"[clé masquée]")+"\nAucun texte remplacé.");if(code>0){string body=DataFiles.Json().Serialize(new{error=new{message=message}});throw new Exception(ApiErrors.Describe(code,body,key,model));}throw new Exception(String.IsNullOrEmpty(key)?message:message.Replace(key,"[clé masquée]"));}return result;}finally{gate.Release();}}
+  public GroqApi(string enginePath):this(enginePath,10000){}
+  public GroqApi(string enginePath,int timeoutMs){if(timeoutMs<100||timeoutMs>60000)throw new ArgumentOutOfRangeException("timeoutMs");Provider="Groq";executable=Path.GetFullPath(enginePath);timeoutMilliseconds=timeoutMs;}
+  EngineWorker GetWorker(){lock(workerSync){if(disposed)throw new OperationCanceledException();if(worker==null)worker=new EngineWorker(executable);return worker;}}
+  void Retire(EngineWorker owner){if(owner==null)return;lock(workerSync){if(Object.ReferenceEquals(worker,owner))worker=null;}owner.Abort();}
+  void Trace(string operation,EngineStage stage,EngineOutcome outcome,long elapsed){try{if(Diagnostic!=null)Diagnostic(new EngineTrace{Operation=operation,Stage=stage,Outcome=outcome,Milliseconds=elapsed});}catch{}}
+  void Report(ApiReport report){try{if(Reported!=null)Reported(report);}catch{}}
+  static string Operation(object payload){var property=payload.GetType().GetProperty("op");string op=property==null?"":Convert.ToString(property.GetValue(payload,null));return new[]{"correct","rephrase","generate","test","warmup"}.Contains(op)?op:"unknown";}
+  static void Observe(Task task){task.ContinueWith(t=>{var ignored=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted,TaskScheduler.Default);}
+  async Task<Dictionary<string,object>> Request(object payload,string key,string model){
+   string operation=Operation(payload);var timer=Stopwatch.StartNew();bool acquired=false,reported=false;EngineWorker owner=null;EngineStage stage=EngineStage.Gate;EngineOutcome outcome=EngineOutcome.TransportError;
+   using(var budget=CancellationTokenSource.CreateLinkedTokenSource(closing.Token)){
+    budget.CancelAfter(timeoutMilliseconds);var token=budget.Token;
+    try{
+     await gate.WaitAsync(token);acquired=true;token.ThrowIfCancellationRequested();
+     stage=EngineStage.Serialize;byte[] bytes=Encoding.UTF8.GetBytes(DataFiles.Json().Serialize(payload)+"\n");token.ThrowIfCancellationRequested();owner=GetWorker();
+     var exchange=Task.Run(()=>owner.Exchange(bytes,token));Observe(exchange);
+     if(await Task.WhenAny(exchange,Task.Delay(Timeout.Infinite,token))!=exchange){token.ThrowIfCancellationRequested();throw new OperationCanceledException();}
+     string line=await exchange;token.ThrowIfCancellationRequested();stage=EngineStage.Decode;
+     if(String.IsNullOrEmpty(line)||line.Length>100000)throw new InvalidDataException("Réponse du moteur absente ou trop volumineuse.");
+     Dictionary<string,object> result;try{result=DataFiles.Json().Deserialize<Dictionary<string,object>>(line);}catch{throw new InvalidDataException("Réponse du moteur illisible.");}
+     if(result==null||!result.ContainsKey("ok")||!(result["ok"] is bool))throw new InvalidDataException("Réponse du moteur incomplète.");
+     if(result.ContainsKey("operation")){ApiReport report;try{report=DataFiles.Json().Deserialize<ApiReport>(DataFiles.Json().Serialize(result));}catch{throw new InvalidDataException("Mesures du moteur illisibles.");}reported=true;Report(report);}
+     if(!Convert.ToBoolean(result["ok"])){
+      outcome=EngineOutcome.ProviderError;int code=result.ContainsKey("code")?Convert.ToInt32(result["code"]):0;string message=result.ContainsKey("message")?Convert.ToString(result["message"]):"Erreur du SDK Python.";
+      if(!String.IsNullOrEmpty(key))message=message.Replace(key,"[clé masquée]");
+      if(code==429)throw new EngineProviderError(message+"\nAucun texte remplacé.");
+      if(code>0&&((result.ContainsKey("providerUsed")?Convert.ToString(result["providerUsed"]):Provider)=="Groq"))throw new EngineProviderError("Erreur Groq (HTTP "+code+").\n"+message+"\nAucun texte remplacé.");
+      if(code>0)message=ApiErrors.Describe(code,DataFiles.Json().Serialize(new{error=new{message=message}}),key,model);
+      throw new EngineProviderError(message);
+     }
+     outcome=EngineOutcome.Success;stage=EngineStage.Complete;return result;
+    }catch(EngineProviderError){throw;}
+    catch(OperationCanceledException){stage=owner==null?stage:owner.Stage;outcome=disposed?EngineOutcome.Cancelled:EngineOutcome.Timeout;Retire(owner);throw new Exception(disposed?"L’application est en cours de fermeture.":"Délai de "+(timeoutMilliseconds/1000.0).ToString("0.#")+" secondes atteint. Aucun texte remplacé. Vous pouvez réessayer ; le moteur sera recréé.");}
+    catch(Exception error){stage=owner==null||stage==EngineStage.Decode?stage:owner.Stage;outcome=error is InvalidDataException?EngineOutcome.ProtocolError:EngineOutcome.TransportError;Retire(owner);if(error is FileNotFoundException)throw;throw new Exception("La liaison avec le moteur a été interrompue. Aucun texte remplacé. Réessayez pour recréer le moteur.");}
+    finally{if(acquired)gate.Release();if(!reported&&outcome!=EngineOutcome.Success)Report(new ApiReport{ok=false,operation=operation});Trace(operation,stage,outcome,timer.ElapsedMilliseconds);}
+   }
+  }
+  sealed class EngineProviderError:Exception{public EngineProviderError(string message):base(message){}}
   static int Number(Dictionary<string,object> value,string key){return value.ContainsKey(key)?Convert.ToInt32(value[key]):0;}
   public async Task Warmup(string key,string model){await Request(new{op="warmup",provider=Provider,key=key,model=model},key,model);}
   public async Task Test(string key,string model){await Request(new{op="test",provider=Provider,key=key,model=model},key,model);}
@@ -34,6 +69,6 @@ namespace ParoleRP {
    text=generation?text.Trim():Regex.Match(selection,@"^\s*").Value+text.Trim()+Regex.Match(selection,@"\s*$").Value;
    return new Correction{Text=text,Milliseconds=(int)totalTimer.ElapsedMilliseconds,InputTokens=Number(result,"inputTokens"),OutputTokens=Number(result,"outputTokens"),CachedTokens=Number(result,"cachedTokens"),ContextUsed=Value(result,"contextUsed"),ConnectionName=Value(result,"connectionName"),ProviderUsed=Value(result,"providerUsed"),ModelUsed=Value(result,"modelUsed"),Attempts=Number(result,"attempts"),Warning=generation?GenerationGuard.Check(text,character.GenerationFormat):RpGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words)),rephrase)};
   }
-  public void Dispose(){disposed=true;Stop();}
+  public void Dispose(){if(disposed)return;disposed=true;closing.Cancel();EngineWorker owner;lock(workerSync){owner=worker;worker=null;}if(owner!=null)owner.Abort();}
  }
 }

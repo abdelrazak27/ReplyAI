@@ -1,4 +1,4 @@
-﻿# Reply AI — version 2.2.1
+﻿# Reply AI — version 2.2.2
 
 Correcteur de sélection pour Windows et FiveM, utilisant exclusivement Groq. Python et le SDK Groq sont inclus. Aucun autre fournisseur n’est proposé ou appelé.
 
@@ -136,3 +136,9 @@ Le choix du modèle de correction se trouve dans Avancé. Reformulation et gén�
 Après un remplacement, Ctrl+Z peut restaurer le texte original pendant 30 secondes, tant que vous n’avez ni retouché le champ ni changé de fenêtre. Reply AI vérifie le texte avant de le rétablir et ne transmet aucune nouvelle demande à Groq. Après saisie, déplacement du curseur ou clic, Ctrl+Z reprend son fonctionnement habituel dans l’application cible. Si Ctrl+Z est déjà votre raccourci Reply AI ou si Windows refuse son enregistrement, l’annulation reste celle de l’application cible.
 
 Les styles de dialogue Toxico et Crapule sont disponibles dans le profil du personnage. Ils conservent l’idée du message tout en changeant sa voix.
+
+## Récupération du moteur (2.2.2)
+
+Le délai de 10 secondes couvre toute la liaison avec le moteur, y compris les étapes d’envoi et de vidange du canal. Une liaison bloquée est retirée ; le prochain appui explicite peut démarrer un moteur neuf. Aucun renvoi automatique de la demande après une expiration.
+
+Le fichier local diagnostic.log contient uniquement les réceptions de raccourcis, les étapes techniques, les résultats et les durées. Aucun message RP, contexte, nom de personnage, clé ni erreur brute n’y est écrit. Une seule copie précédente est conservée ; chaque journal est limité à environ 256 Kio. Ce fichier n’est pas inclus dans les exports de personnages. Il permet de différencier un raccourci reçu puis bloqué d’un délai du moteur.

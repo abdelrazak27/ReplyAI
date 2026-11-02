@@ -10,4 +10,5 @@ try {
  Push-Location $tempTests
  try { & .\Tests.exe; if($LASTEXITCODE -ne 0){throw 'Un test a échoué.'} } finally { Pop-Location }
  & ./tests/VERIFIER-USAGE.ps1 -WorkingRoot $WorkingRoot
+ & ./tests/VERIFIER-MOTEUR.ps1 -WorkingRoot $WorkingRoot
 } finally { Pop-Location }

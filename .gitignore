@@ -12,3 +12,5 @@ __pycache__/
 
 usage*.json
 .previous-versions/
+
+diagnostic.log*
