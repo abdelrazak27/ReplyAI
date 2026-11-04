@@ -26,7 +26,7 @@ class ClipboardIsolationTests {
   memory.Foreground=42;var expired=Command("set",3,"expired");expired.Until=DateTime.UtcNow.AddSeconds(-1).Ticks;Check(!worker.Execute(expired).Ok&&writes==memory.Writes,"expired command cannot write later");
   memory.Busy=2;Check(worker.Execute(Command("set",3,"after-busy")).Ok&&memory.Value=="after-busy","temporary clipboard contention is retried within budget");
   foreach(string op in new[]{"backup","read","set","restore"}){
-   using(var channel=new ClipboardChannel(executable,650)){
+   using(var channel=new ClipboardChannel(executable)){
     // Fake backend is selected in this test executable only; Windows clipboard is never accessed.
     await channel.Send("backup",1,null,()=>true,42);
     await channel.Send("set",1,"hang:"+op,()=>true,42);
