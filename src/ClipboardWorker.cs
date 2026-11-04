@@ -44,8 +44,10 @@ namespace ParoleRP {
   public static void Run(IClipboardBackend backend){
    var encoding=new UTF8Encoding(false);var json=new JavaScriptSerializer{MaxJsonLength=250000};
    using(var input=new StreamReader(Console.OpenStandardInput(),encoding))using(var output=new StreamWriter(Console.OpenStandardOutput(),encoding){AutoFlush=true}){
-    var worker=new ClipboardWorker(backend);string line;
-    while((line=input.ReadLine())!=null){ClipboardReply reply;try{reply=worker.Execute(json.Deserialize<ClipboardCommand>(line));}catch{reply=new ClipboardReply{Error="Commande de presse-papiers invalide."};}output.WriteLine(json.Serialize(reply));}
+    var worker=new ClipboardWorker(backend);var dispatcher=System.Windows.Threading.Dispatcher.CurrentDispatcher;
+    // OLE clipboard ownership requires this STA to pump messages while waiting for commands.
+    var reader=new Thread(()=>{try{string line;while((line=input.ReadLine())!=null){string frame=line;ClipboardReply reply=null;dispatcher.Invoke(new Action(()=>{try{reply=worker.Execute(json.Deserialize<ClipboardCommand>(frame));}catch{reply=new ClipboardReply{Error="Commande de presse-papiers invalide."};}}));output.WriteLine(json.Serialize(reply));}}catch{}finally{dispatcher.BeginInvokeShutdown(System.Windows.Threading.DispatcherPriority.Background);}}){IsBackground=true};
+    reader.Start();System.Windows.Threading.Dispatcher.Run();
    }
   }
  }

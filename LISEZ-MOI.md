@@ -1,4 +1,4 @@
-﻿# Reply AI — version 2.2.3
+﻿# Reply AI — version 2.2.4
 
 Correcteur de sélection pour Windows et FiveM, utilisant exclusivement Groq. Python et le SDK Groq sont inclus. Aucun autre fournisseur n’est proposé ou appelé.
 
