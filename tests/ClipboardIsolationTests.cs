@@ -38,11 +38,22 @@ class ClipboardIsolationTests {
   }
   using(var channel=new ClipboardChannel(executable,2000)){await channel.Send("set",1,"hang:read",()=>true,42);var active=Error(channel.Send("read",2,null,()=>true,42));var queued=Error(channel.Send("read",2,null,()=>true,42));await Task.Delay(100);channel.Dispose();var done=Task.WhenAll(active,queued);Check(await Task.WhenAny(done,Task.Delay(2500))==done&&await active!=null&&await queued!=null,"disposal releases active and queued clipboard operations");}
   using(var channel=new ClipboardChannel(executable)){var rejected=await Error(channel.Send("set",1,"no-write",()=>false,42));Check(rejected is OperationCanceledException,"changed selection rejected before worker command");}
+  await ParentDeath();
   Console.WriteLine(count+" clipboard isolation checks passed. No desktop clipboard or keyboard access.");
  }
- [STAThread]static int Main(string[] args){if(args.Length==1&&args[0]=="--clipboard-worker"){ClipboardWorker.Run(new TestBackend());return 0;}executable=typeof(ClipboardIsolationTests).Assembly.Location;try{Run().GetAwaiter().GetResult();return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
+ static async Task ParentDeath(){
+  System.Diagnostics.Process parent=null,child=null;try{
+   parent=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(executable,"--test-parent"){UseShellExecute=false,CreateNoWindow=true});
+   child=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(executable,"--blocked-worker "+parent.Id+" "+parent.StartTime.ToUniversalTime().Ticks){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true});
+   child.StandardInput.WriteLine(new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new ClipboardCommand{Op="read",Expected=1,Target=42,Until=DateTime.UtcNow.AddMinutes(1).Ticks}));child.StandardInput.Flush();
+   var entered=child.StandardError.ReadLineAsync();Check(await Task.WhenAny(entered,Task.Delay(2500))==entered&&await entered=="BLOCKED","fake clipboard COM call entered before parent exit");
+   Check(await Task.Run(()=>child.WaitForExit(6000)),"blocked clipboard child exits when its parent exits");
+  }finally{foreach(var process in new[]{child,parent})if(process!=null){try{if(!process.HasExited)process.Kill();}catch{}process.Dispose();}}
+ }
+ [STAThread]static int Main(string[] args){if(args.Length==1&&args[0]=="--test-parent"){Thread.Sleep(3000);return 0;}if(args.Length>=1&&(args[0]=="--clipboard-worker"||args[0]=="--blocked-worker")){if(args.Length==3)ClipboardWorker.WatchParent(Int32.Parse(args[1]),Int64.Parse(args[2]));var backend=new TestBackend();if(args[0]=="--blocked-worker"){backend.Hang="read";backend.Announce=true;}ClipboardWorker.Run(backend);return 0;}executable=typeof(ClipboardIsolationTests).Assembly.Location;try{Run().GetAwaiter().GetResult();return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
  class TestBackend:MemoryClipboard,IClipboardBackend {
-  public TestBackend(){Sequence=1;Foreground=42;}
+  public bool Announce;public TestBackend(){Sequence=1;Foreground=42;}
+  string IClipboardBackend.Read(){if(Announce&&Hang=="read")Console.Error.WriteLine("BLOCKED");return base.Read();}
   void IClipboardBackend.Set(string text){if(text!=null&&text.StartsWith("hang:")){Hang=text.Substring(5);Sequence++;return;}base.Set(text);}
  }
 }

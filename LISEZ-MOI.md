@@ -1,4 +1,4 @@
-﻿# Reply AI — version 2.2.2
+﻿# Reply AI — version 2.2.3
 
 Correcteur de sélection pour Windows et FiveM, utilisant exclusivement Groq. Python et le SDK Groq sont inclus. Aucun autre fournisseur n’est proposé ou appelé.
 
@@ -144,3 +144,5 @@ Le délai de 10 secondes couvre toute la liaison avec le moteur, y compris les �
 Le fichier local diagnostic.log contient uniquement les réceptions de raccourcis, les étapes techniques, les résultats et les durées. Aucun message RP, contexte, nom de personnage, clé ni erreur brute n’y est écrit. Une seule copie précédente est conservée ; chaque journal est limité à environ 256 Kio. Ce fichier n’est pas inclus dans les exports de personnages. Il permet de différencier un raccourci reçu puis bloqué d’un délai du moteur.
 
 Le presse-papiers des raccourcis, de Ctrl+Z et de la copie de résultat est traité par une instance auxiliaire STA sans interface. Ses appels sont limités à 2 secondes ; une opération bloquée ne retient plus le fil de l’interface. La récupération de l’ancien contenu reste conditionnée à la propriété du presse-papiers et peut échouer si son propriétaire Windows ne répond pas. Le journal technique indique les étapes de copie sans enregistrer le contenu.
+
+Le processus STA auxiliaire surveille la fin du processus principal et quitte également si un appel Windows est bloqué.

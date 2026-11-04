@@ -6,7 +6,7 @@ using System.Web.Script.Serialization;
 namespace ParoleRP {
  public sealed class ClipboardChannel:IDisposable {
   readonly EngineWorker worker;readonly int timeout;readonly CancellationTokenSource closed=new CancellationTokenSource();volatile bool disposed;readonly SemaphoreSlim gate=new SemaphoreSlim(1,1);
-  public ClipboardChannel(string executable,int timeoutMs=2000){worker=new EngineWorker(executable,"--clipboard-worker");timeout=timeoutMs;}
+  public ClipboardChannel(string executable,int timeoutMs=2000){using(var parent=System.Diagnostics.Process.GetCurrentProcess()){worker=new EngineWorker(executable,"--clipboard-worker "+parent.Id+" "+parent.StartTime.ToUniversalTime().Ticks);}timeout=timeoutMs;}
   public async Task<ClipboardReply> Send(string op,uint expected,string text,Func<bool> valid,long target=0){
    if(disposed)throw new ObjectDisposedException("ClipboardChannel");
    if(valid!=null&&!valid())throw new OperationCanceledException("La fenêtre ou le presse-papiers a changé.");

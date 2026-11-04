@@ -39,6 +39,7 @@ namespace ParoleRP {
    catch(ExternalException error){if(error.ErrorCode==unchecked((int)0x800401D0)&&timer.ElapsedMilliseconds<900&&command!=null&&DateTime.UtcNow.Ticks<command.Until){Thread.Sleep(30);continue;}return new ClipboardReply{Error="Le presse-papiers Windows est occupé. Relâchez les touches puis réessayez."};}
    catch{return new ClipboardReply{Error="Le presse-papiers Windows n’est pas disponible. Réessayez."};}}
   }
+  public static void WatchParent(int id,long ticks){var watch=new Thread(()=>{try{using(var parent=System.Diagnostics.Process.GetProcessById(id)){if(parent.StartTime.ToUniversalTime().Ticks==ticks)parent.WaitForExit();}}catch{}Environment.Exit(0);}){IsBackground=true};watch.Start();}
   public static void Run(){Run(new WindowsClipboardBackend());}
   public static void Run(IClipboardBackend backend){
    var encoding=new UTF8Encoding(false);var json=new JavaScriptSerializer{MaxJsonLength=250000};
