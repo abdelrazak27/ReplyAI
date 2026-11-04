@@ -18,16 +18,16 @@ namespace ParoleRP {
    keyboardHook=Native.SetWindowsHookEx(13,keyboardCallback,Native.GetModuleHandle(null),0);mouseHook=Native.SetWindowsHookEx(14,mouseCallback,Native.GetModuleHandle(null),0);if(keyboardHook==IntPtr.Zero||mouseHook==IntPtr.Zero||!Native.RegisterHotKey(handle,104,2|0x4000,90)){ClearUndo();return;}
    undoTicket=new UndoTicket{Window=target,Original=original,Replacement=replacement,Focus=focus,Until=DateTime.UtcNow.AddSeconds(30)};if(undoTimer==null){undoTimer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(150)};undoTimer.Tick+=(s,e)=>{if(undoTicket!=null&&(DateTime.UtcNow>undoTicket.Until||Native.GetForegroundWindow()!=undoTicket.Window))ClearUndo();};}undoTimer.Start();
   }
-  async void UndoReplacement(){try{await UndoReplacementCore();}catch(Exception ex){Balloon("Annulation interrompue : "+ex.Message);}if(undoOwnClipboard){await RestoreClipboardAsync();capturing=false;undoOwnClipboard=false;}undoInProgress=false;ClearUndo();RefreshGlobalState();}
+  async void UndoReplacement(){try{try{await UndoReplacementCore();}catch(Exception ex){Balloon("Annulation interrompue : "+ex.Message);}if(undoOwnClipboard)await RestoreClipboardAsync();}finally{if(undoOwnClipboard)capturing=false;undoOwnClipboard=false;undoInProgress=false;ClearUndo();RefreshGlobalState();}}
   async Task UndoReplacementCore(){var ticket=undoTicket;IntPtr foreground=Native.GetForegroundWindow();if(ticket==null){Native.UnregisterHotKey(handle,104);return;}undoTicket=null;undoInProgress=true;Native.UnregisterHotKey(handle,104);int inputVersion=undoInputVersion;try{
     for(int i=0;i<30&&(busy||capturing);i++)await Task.Delay(20);if(busy||capturing){return;}
     if(!await Released()){return;}
     string focus=await ReadFocus();if(!ticket.Matches(Native.GetForegroundWindow(),focus,DateTime.UtcNow)){if(Native.GetForegroundWindow()==foreground&&inputVersion==undoInputVersion)Native.Key(90);return;}
     capturing=true;undoOwnClipboard=true;Func<bool> valid=()=>inputVersion==undoInputVersion&&Native.GetForegroundWindow()==ticket.Window&&DateTime.UtcNow<=ticket.Until;
-    uint before=Native.GetClipboardSequenceNumber();clipBackup=await ClipboardRetry.Run(()=>Clipboard.GetDataObject(),()=>valid()&&Native.GetClipboardSequenceNumber()==before);clipOwned=before;clipCaptured=true;
+    uint before=Native.GetClipboardSequenceNumber();await BackupClipboard(before,()=>valid()&&Native.GetClipboardSequenceNumber()==before);
     if(!valid())return;await Native.SelectPrevious(ticket.Replacement.Length);await Task.Delay(80);if(!valid())return;string selected=await CopySelection(valid);if(!valid())return;
     if(selected!=ticket.Replacement){Native.Tap(39);Native.Key(90);return;}
-    if(!await Released()||!valid())return;uint copied=clipOwned;await ClipboardRetry.Run(()=>{Clipboard.SetText(ticket.Original);clipOwned=Native.GetClipboardSequenceNumber();return true;},()=>valid()&&Native.GetClipboardSequenceNumber()==copied);
+    if(!await Released()||!valid())return;uint copied=clipOwned;await PutClipboard(ticket.Original,copied,valid);
     if(!valid()||Native.GetClipboardSequenceNumber()!=clipOwned)return;Native.Key(86);await Task.Delay(350);ShortcutTrace("Dernier remplacement annulé. Le message n’a pas été envoyé.");
    }catch(Exception ex){Balloon("Annulation interrompue : "+ex.Message);}}
  }

@@ -1,8 +1,9 @@
-Reply AI 2.2.2
+﻿# Reply AI 2.2.2
 
-- Correction d’un blocage possible avant le démarrage du délai de sécurité : la limite de 10 secondes couvre maintenant l’attente, le démarrage, l’envoi, la vidange et la lecture de la réponse du moteur.
-- Une liaison bloquée est abandonnée. La prochaine demande explicite démarre un moteur neuf ; le texte n’est pas renvoyé automatiquement à Groq.
-- Libération de l’état occupé dans le nettoyage du raccourci, y compris en cas d’erreur.
-- Journal technique local et borné : étapes et délais uniquement, sans message RP, contexte ni clé API.
+- Les appels au moteur ont maintenant un délai global de 10 secondes, y compris l’envoi de la demande. Une liaison bloquée est abandonnée et la demande suivante recrée le moteur.
+- La copie, la lecture et la restauration du presse-papiers sont isolées dans un processus STA séparé. Un appel Windows bloqué expire après 2 secondes sans figer l’interface ni les raccourcis.
+- Les mêmes protections couvrent le Ctrl+Z et la copie du résultat depuis Essai RP. Les vérifications de sélection, de fenêtre et de propriété du presse-papiers sont conservées.
+- Aucune requête n’est automatiquement renvoyée après un blocage. Le texte n’est jamais envoyé dans le jeu automatiquement.
+- Journal technique local limité : étapes, résultats et durées, sans texte RP, contexte ou clé API.
 
-Dans Reply AI : Configurations → Mises à jour → Vérifier → Mettre à jour lorsque vous êtes prêt à redémarrer l’application. Profils, clés et historique conservés.
+Installer depuis Configurations → Mises à jour quand vous êtes prêt à relancer l’application.

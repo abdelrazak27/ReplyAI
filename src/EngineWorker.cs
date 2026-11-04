@@ -10,13 +10,13 @@ namespace ParoleRP {
  public sealed class EngineTrace {public string Operation;public EngineStage Stage;public EngineOutcome Outcome;public long Milliseconds;}
  // Each exchange retains its own channel reference. Retired I/O can never use a replacement worker.
  sealed class EngineWorker {
-  readonly string executable;readonly object sync=new object();Process process;int retired;public volatile EngineStage Stage=EngineStage.Startup;
-  public EngineWorker(string path){executable=path;}
+  readonly string executable,arguments;readonly object sync=new object();Process process;int retired;public volatile EngineStage Stage=EngineStage.Startup;
+  public EngineWorker(string path,string args=""){executable=path;arguments=args;}
   Process Open(){
    if(Volatile.Read(ref retired)!=0)throw new OperationCanceledException();
    lock(sync){if(process!=null&&!process.HasExited)return process;}
    if(!File.Exists(executable))throw new FileNotFoundException("Le moteur Python est absent. Extrayez le dossier complet de Reply AI.");
-   var info=new ProcessStartInfo(executable){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=new UTF8Encoding(false),StandardErrorEncoding=new UTF8Encoding(false),WorkingDirectory=Path.GetDirectoryName(executable)};
+   var info=new ProcessStartInfo(executable,arguments){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=new UTF8Encoding(false),StandardErrorEncoding=new UTF8Encoding(false),WorkingDirectory=Path.GetDirectoryName(executable)};
    var started=Process.Start(info);lock(sync){process=started;}
    if(Volatile.Read(ref retired)!=0){EngineProcesses.StopOwned(started,executable);throw new OperationCanceledException();}
    started.ErrorDataReceived+=(s,e)=>{};started.BeginErrorReadLine();return started;
