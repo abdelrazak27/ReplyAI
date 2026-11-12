@@ -106,6 +106,11 @@ string fakeKey="FAKE_TEST_KEY_NEVER_REAL_123456789";store.SaveKey(fakeKey);Check
  Check(GenerationGuard.Check("/do Une odeur de fumée flotte autour du véhicule.","Auto")==null,"génération automatique accepte une description do");
  Check(GenerationGuard.Check("/me range son téléphone.","/me")==null&&GenerationGuard.Check("/ame range son téléphone.","/ame")==null,"formats me et ame autorisés");
  Check(GenerationGuard.Check("*range son téléphone*","Entre étoiles")==null,"format étoiles autorisé");
+ Check(GenerationGuard.Check("*éteint sa clope avant de dire :* Je m’en vais.","Auto")==null,"génération accepte une réplique introduite dans le geste");
+ Check(GenerationGuard.Check("Attends. *récupère son sac puis ajoute :* J'arrive.","Entre étoiles")==null,"génération accepte les répliques autour du geste");
+ Check(GenerationGuard.Check("*éteint sa clope* Je m’en vais.","Auto")!=null&&GenerationGuard.Check("*éteint sa clope avant de dire* : Je m’en vais.","Auto")!=null,"le deux-points doit précéder l’étoile fermante");
+ Check(GenerationGuard.Check("*éteint sa clope Je m’en vais.","Auto")!=null&&GenerationGuard.Check("*/quit* Je m’en vais.","Auto")!=null,"format mixte refuse étoile ouverte et commande externe");
+ Check(GenerationGuard.Check("*éteint sa clope avant de dire :* Je m’en vais.","/me")!=null,"format forcé reste prioritaire");
  Check(GenerationGuard.Check("/do Une odeur persiste.","/me")!=null,"format forcé non respecté bloqué");
  Check(GenerationGuard.Check("Voici : /do Une odeur persiste.","Auto")!=null,"commentaire avant génération bloqué");
  Check(GenerationGuard.Check("/me bouge.\n/do Bruit.","Auto")!=null&&GenerationGuard.Check("/me bouge. /do Bruit.","Auto")!=null,"plusieurs commandes générées bloquées");

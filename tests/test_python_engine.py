@@ -405,6 +405,22 @@ class GenerationTests(unittest.TestCase):
             with self.assertRaises(ValueError):asyncio.run(engine.handle_async(request,pool))
             pool.get.assert_not_called()
 
+    def test_mixed_generation_uses_dialogue_style_and_returns_direct_speech(self):
+        request = self.request()
+        request["character"].update(GenerationFormat="Auto", DialogueStyle="Familier", DialogueInstructions="Garde le mot clope.")
+        request["text"] = "jeteins ma clope avant de répondre que je m'en vais"
+        expected = "*éteint sa clope avant de dire :* Je m’en vais."
+        pool = NS(get=AsyncMock(return_value=object()))
+        generate = AsyncMock(return_value={"text": expected, "inputTokens": 100, "outputTokens": 12, "cachedTokens": 0})
+        with patch.object(engine, "groq_generate", generate):
+            result = asyncio.run(engine.handle_async(request, pool))
+        self.assertEqual(result["text"], expected)
+        system = generate.await_args.args[2]
+        self.assertIn("discours direct", system)
+        self.assertIn("deux-points juste avant l’étoile fermante", system)
+        self.assertIn(engine.DIALOGUE_STYLES["Familier"], system)
+        self.assertIn("Garde le mot clope.", system)
+
     def test_generation_fallback_keeps_idea_and_operation(self):
         request=self.request();request['connections']=[{'Provider':'Groq','Model':request['model'],'Key':'FAKE_FIRST_KEY_123456','QuotaGroup':'first','Name':'First'}, {'Provider':'Groq','Model':request['model'],'Key':'FAKE_SECOND_KEY_123456','QuotaGroup':'second','Name':'Second'}]
         error=RuntimeError('quota');error.status_code=429
