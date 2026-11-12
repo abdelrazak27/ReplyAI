@@ -1,0 +1,8 @@
+ctranslate2==4.8.5
+sentencepiece==0.2.3
+# Build/conversion only (excluded from the shipped worker):
+transformers==4.57.6
+huggingface-hub==0.36.2
+torch==2.15.0
+pyinstaller==6.22.3
+sacremoses==0.2.0

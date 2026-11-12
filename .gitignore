@@ -14,3 +14,5 @@ usage*.json
 .previous-versions/
 
 diagnostic.log*
+
+local-translator/
