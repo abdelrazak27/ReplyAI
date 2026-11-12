@@ -21,7 +21,7 @@ namespace ParoleRP {
   void Retire(EngineWorker owner){if(owner==null)return;lock(workerSync){if(Object.ReferenceEquals(worker,owner))worker=null;}owner.Abort();}
   void Trace(string operation,EngineStage stage,EngineOutcome outcome,long elapsed){try{if(Diagnostic!=null)Diagnostic(new EngineTrace{Operation=operation,Stage=stage,Outcome=outcome,Milliseconds=elapsed});}catch{}}
   void Report(ApiReport report){try{if(Reported!=null)Reported(report);}catch{}}
-  static string Operation(object payload){var property=payload.GetType().GetProperty("op");string op=property==null?"":Convert.ToString(property.GetValue(payload,null));return new[]{"correct","rephrase","generate","test","warmup"}.Contains(op)?op:"unknown";}
+  static string Operation(object payload){var property=payload.GetType().GetProperty("op");string op=property==null?"":Convert.ToString(property.GetValue(payload,null));return new[]{"correct","rephrase","generate","test","warmup","chat"}.Contains(op)?op:"unknown";}
   static void Observe(Task task){task.ContinueWith(t=>{var ignored=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted,TaskScheduler.Default);}
   async Task<Dictionary<string,object>> Request(object payload,string key,string model){
    string operation=Operation(payload);var timer=Stopwatch.StartNew();bool acquired=false,reported=false;EngineWorker owner=null;EngineStage stage=EngineStage.Gate;EngineOutcome outcome=EngineOutcome.TransportError;
@@ -59,15 +59,25 @@ namespace ParoleRP {
   public async Task TestConnection(ApiConnection connection){await Request(new{op="test",provider=connection.Provider,key=connection.Key,model=connection.Model,connectionId=connection.Id,quotaGroup=connection.QuotaGroup},connection.Key,connection.Model);}
   static string Value(Dictionary<string,object> result,string key){return result.ContainsKey(key)?Convert.ToString(result[key]):null;}
   public Task<Correction> Correct(string key,string model,Character character,string shared,string selection){return CorrectConnections(new List<ApiConnection>{new ApiConnection{Name="Connexion principale",Provider=Provider,Model=model,QuotaGroup="principal",Key=key}},character,shared,selection);}
-  public async Task<Correction> CorrectConnections(List<ApiConnection> connections,Character character,string shared,string selection,bool rephrase=false,bool generation=false){
+  public async Task<Correction> CorrectConnections(List<ApiConnection> connections,Character character,string shared,string selection,bool rephrase=false,bool generation=false,bool english=false){
    if(character==null)throw new Exception("Choisissez un personnage.");
+   english=english||character.LanguageMode=="FR-EN";
    if(connections==null||connections.Count==0||connections.Count>9)throw new Exception("Configurez vos connexions API.");
    if(String.IsNullOrWhiteSpace(selection)||selection.Length>3000)throw new Exception("Sélectionnez entre 1 et 3 000 caractères.");
    connections=OperationRoutes.Prepare(connections,rephrase||generation);var first=connections[0];var totalTimer=Stopwatch.StartNew();
-   var result=await Request(new{op=generation?"generate":rephrase?"rephrase":"correct",provider=first.Provider,key=first.Key,model=first.Model,connections=connections,character=character,shared=shared,text=selection},first.Key,first.Model);
+   var result=await Request(new{op=generation?"generate":rephrase?"rephrase":"correct",provider=first.Provider,key=first.Key,model=first.Model,connections=connections,character=character,shared=shared,text=selection,targetLanguage=english?"en":"fr"},first.Key,first.Model);
    string text=Value(result,"text");if(String.IsNullOrWhiteSpace(text))throw new Exception("Le SDK n’a renvoyé aucun texte. Aucun texte remplacé.");
    text=generation?text.Trim():Regex.Match(selection,@"^\s*").Value+text.Trim()+Regex.Match(selection,@"\s*$").Value;
-   return new Correction{Text=text,Milliseconds=(int)totalTimer.ElapsedMilliseconds,InputTokens=Number(result,"inputTokens"),OutputTokens=Number(result,"outputTokens"),CachedTokens=Number(result,"cachedTokens"),ContextUsed=Value(result,"contextUsed"),ConnectionName=Value(result,"connectionName"),ProviderUsed=Value(result,"providerUsed"),ModelUsed=Value(result,"modelUsed"),Attempts=Number(result,"attempts"),Warning=generation?GenerationGuard.Check(text,character.GenerationFormat):RpGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words)),rephrase)};
+   return new Correction{Text=text,Milliseconds=(int)totalTimer.ElapsedMilliseconds,InputTokens=Number(result,"inputTokens"),OutputTokens=Number(result,"outputTokens"),CachedTokens=Number(result,"cachedTokens"),ContextUsed=Value(result,"contextUsed"),ConnectionName=Value(result,"connectionName"),ProviderUsed=Value(result,"providerUsed"),ModelUsed=Value(result,"modelUsed"),Attempts=Number(result,"attempts"),Warning=generation?GenerationGuard.Check(text,character.GenerationFormat):english?TranslationGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words))):RpGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words)),rephrase)};
+  }
+  public async Task<List<ChatLine>> TranslateChat(List<ApiConnection> connections,List<ChatLine> lines){
+   if(connections==null||connections.Count<1||connections.Count>9)throw new Exception("Configurez vos connexions API.");
+   if(lines==null||lines.Count<1||lines.Count>6)throw new Exception("Lot de chat invalide.");
+   var first=connections[0];
+   var result=await Request(new{op="chat",provider=first.Provider,key=first.Key,model=first.Model,connections=connections,text=DataFiles.Json().Serialize(lines)},first.Key,first.Model);
+   var translated=DataFiles.Json().Deserialize<List<ChatLine>>(Value(result,"text"));
+   if(translated==null||translated.Count!=lines.Count||translated.Where((line,i)=>line==null||line.id!=lines[i].id||String.IsNullOrWhiteSpace(line.text)||line.text.Length>4000).Any())throw new Exception("Traduction du chat incomplète.");
+   return translated;
   }
   public void Dispose(){if(disposed)return;disposed=true;closing.Cancel();EngineWorker owner;lock(workerSync){owner=worker;worker=null;}if(owner!=null)owner.Abort();}
  }
