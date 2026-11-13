@@ -348,7 +348,8 @@ class RephraseTests(unittest.TestCase):
         self.assertEqual(json.loads(generate.await_args.args[3])["texte"],request["text"])
         self.assertEqual(prepare.await_count,0)
         system=generate.await_args.args[2]
-        self.assertIn("Français majoritaire",system)
+        self.assertIn("un personnage qui vit aux États-Unis",system)
+        self.assertIn("N’ajoute jamais l’interjection « wesh »",system)
         self.assertIn("description concrète",system)
         self.assertIn("/ame",system)
         self.assertIn("/do décrit un fait",system)
