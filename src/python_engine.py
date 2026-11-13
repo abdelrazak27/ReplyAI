@@ -225,7 +225,7 @@ DIALOGUE_STYLES = {
     "Élégant": "Réécris avec élégance et nuance, vocabulaire raffiné et rythme fluide, sans grandiloquence.",
     "Familier": "Réécris comme une vraie parole française familière, fluide et grammaticalement correcte ; négations orales sans ne.",
     "Street discret": "Reconstruis en argot de rue français crédible et mesuré. C'est de l'oral bien écrit, jamais du SMS mal orthographié. Pas de caricature.",
-    "Street US discret": "Reconstruis en français oral de rue, crédible pour un serveur RP français. Français majoritaire ; un homie ou dawg seulement si naturel, jamais systématiquement. Corrige toutes les fautes involontaires, accords, conjugaisons, accents et SMS. Garde l'oral sans ne, les contractions correctes avec apostrophes et les rires intentionnels ; pas une copie du texte fautif.",
+    "Street US discret": "Écris en français oral naturel pour un personnage qui vit aux États-Unis. Évite les expressions typiques de l’argot de France. Utilise homie ou dawg seulement si le contexte s’y prête. Corrige les fautes involontaires, les accords, la conjugaison, les accents et le SMS. Garde les contractions orales avec leurs apostrophes et les rires intentionnels.",
     "Populaire / beauf": "Réécris avec franc-parler populaire, expressions terre-à-terre et tournures imagées, sans inventer d'insulte ou de cliché.",
     "Toxico": "Réécris comme un personnage sous l'emprise de substances : parole décousue mais compréhensible, hésitations, répétitions ponctuelles et rythme irrégulier. Reste naturel, sans caricature systématique. Corrige les fautes involontaires. N'invente ni consommation, ni symptôme, ni acte absent de l'idée initiale.",
     "Crapule": "Réécris en français oral de jeune crapule provocateur : insolent, culotté, gouailleur, petites piques et tournures de rue. Cherche la confrontation verbale sans ajouter menace, violence, insulte ciblée ou fait absent de l'idée de départ. Peu ou pas d'anglicismes. Corrige accents, accords, conjugaisons et SMS ; conserve des contractions orales correctes.",
@@ -274,6 +274,7 @@ def rephrase_system(character, shared, text):
         "Conserve la personne qui parle : ne remplace pas je par tu. Ne transforme pas une parole en narration à la troisième personne. "
         "Conserve la nature de chaque acte de parole : une demande concrète ne devient pas une simple insulte. "
         "N’ajoute pas de grossièreté absente du départ et n’amplifie pas les injures, même en street. "
+        "N’ajoute jamais l’interjection « wesh » si elle est absente du texte de départ, quel que soit le style. "
         "Le style peut changer les expressions et le degré de formalité sans transformer l'idée ni inventer un événement, "
         "une réaction d'autrui ou une nouvelle action. Un véhicule déjà brûlé n'est pas forcément encore en flammes. "
         "Tu peux enrichir l’ambiance et les images à partir des faits donnés, sans ajouter personnages, lieux, objets, causes, "

@@ -68,7 +68,11 @@ namespace ParoleRP {
    var result=await Request(new{op=generation?"generate":rephrase?"rephrase":"correct",provider=first.Provider,key=first.Key,model=first.Model,connections=connections,character=character,shared=shared,text=selection,targetLanguage=english?"en":"fr"},first.Key,first.Model);
    string text=Value(result,"text");if(String.IsNullOrWhiteSpace(text))throw new Exception("Le SDK n’a renvoyé aucun texte. Aucun texte remplacé.");
    text=generation?text.Trim():Regex.Match(selection,@"^\s*").Value+text.Trim()+Regex.Match(selection,@"\s*$").Value;
-   return new Correction{Text=text,Milliseconds=(int)totalTimer.ElapsedMilliseconds,InputTokens=Number(result,"inputTokens"),OutputTokens=Number(result,"outputTokens"),CachedTokens=Number(result,"cachedTokens"),ContextUsed=Value(result,"contextUsed"),ConnectionName=Value(result,"connectionName"),ProviderUsed=Value(result,"providerUsed"),ModelUsed=Value(result,"modelUsed"),Attempts=Number(result,"attempts"),Warning=generation?GenerationGuard.Check(text,character.GenerationFormat):english?TranslationGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words))):RpGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words)),rephrase)};
+   string warning=generation?GenerationGuard.Check(text,character.GenerationFormat):english?TranslationGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words))):RpGuard.Check(selection,text,DataFiles.Words(shared).Concat(DataFiles.Words(character.Words)),rephrase);
+   const string interjection=@"(?<![\p{L}\p{N}_])wesh(?![\p{L}\p{N}_])";
+   if(warning==null&&rephrase&&!generation&&Regex.Matches(text,interjection,RegexOptions.IgnoreCase).Count>Regex.Matches(selection,interjection,RegexOptions.IgnoreCase).Count)
+    warning="La reformulation a ajouté « wesh ».";
+   return new Correction{Text=text,Milliseconds=(int)totalTimer.ElapsedMilliseconds,InputTokens=Number(result,"inputTokens"),OutputTokens=Number(result,"outputTokens"),CachedTokens=Number(result,"cachedTokens"),ContextUsed=Value(result,"contextUsed"),ConnectionName=Value(result,"connectionName"),ProviderUsed=Value(result,"providerUsed"),ModelUsed=Value(result,"modelUsed"),Attempts=Number(result,"attempts"),Warning=warning};
   }
   public async Task<List<ChatLine>> TranslateChat(List<ApiConnection> connections,List<ChatLine> lines){
    if(connections==null||connections.Count<1||connections.Count>9)throw new Exception("Configurez vos connexions API.");
