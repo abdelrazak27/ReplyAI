@@ -1,6 +1,4 @@
-# Reply AI 2.3.4
+# Reply AI 2.3.5
 
-- Chat FR traduit le chat entrant de FiveM sur le PC, sans clé ni quota Groq. L’overlay affiche l’original à la demande et permet de demander une retraduction Groq ligne par ligne.
-- Le mode FR-EN permet de corriger, reformuler ou générer des messages RP en anglais.
-- La génération mixte introduit les paroles dans le geste, par exemple `*éteint sa clope avant de dire :* Je m’en vais.` La reformulation applique les styles Actions et Dialogue à leurs passages respectifs.
-- Les trois modes d’écriture demandent de conserver les temps de l’original, même quand une scène mélange passé, présent et futur.
+- La reformulation évite d’ajouter « wesh ». Si le modèle l’ajoute malgré la consigne, Reply AI signale le résultat et bloque le remplacement automatique. Le mot reste autorisé dans le texte d’origine.
+- Le style Street US discret privilégie un français oral adapté à un personnage qui vit aux États-Unis.
